@@ -83,6 +83,39 @@ def generate_doc(
     else:
         out += ["_No static routes._", ""]
 
+    out += ["## VLANs", ""]
+    rows = []
+    for name in sorted(devices):
+        for vid in sorted(devices[name].vlans):
+            rows.append([name, str(vid), devices[name].vlans[vid] or "-"])
+    if rows:
+        out += _table(["Device", "VLAN", "Name"], rows) + [""]
+    else:
+        out += ["_No VLANs defined._", ""]
+
+    out += ["## Switchports", ""]
+    rows = []
+    for name in sorted(devices):
+        for iname, iface in devices[name].interfaces.items():
+            if iface.switchport_mode is None:
+                continue
+            if iface.switchport_mode == "access":
+                rows.append([name, iname, "access", str(iface.access_vlan or 1), "-", "-"])
+            else:
+                if iface.trunk_allowed is None:
+                    allowed = "all"
+                elif not iface.trunk_allowed:
+                    allowed = "none"
+                else:
+                    allowed = ",".join(str(v) for v in sorted(iface.trunk_allowed))
+                rows.append([name, iname, "trunk", "-", allowed, str(iface.native_vlan or 1)])
+    if rows:
+        out += _table(
+            ["Device", "Interface", "Mode", "Access VLAN", "Trunk allowed", "Native VLAN"], rows
+        ) + [""]
+    else:
+        out += ["_No switchports._", ""]
+
     out += ["## Audit findings", ""]
     if findings:
         out += [f"- **{f.severity.upper()}** {f.device}: {f.message}" for f in findings]

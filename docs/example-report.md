@@ -7,6 +7,7 @@
 | r1 | 1.1.1.1 | 2 |
 | r2 | 2.2.2.2 | 3 |
 | r3 | 3.3.3.3 | 2 |
+| sw1 | - | 4 |
 
 ## IP addressing
 
@@ -19,6 +20,10 @@
 | r2 | eth2 | 10.0.23.1/30 | 10.0.23.0/30 | 0 | up |
 | r3 | lo | 3.3.3.3/32 | 3.3.3.3/32 | 0 | up |
 | r3 | eth1 | 10.0.23.2/30 | 10.0.23.0/30 | 0 | up |
+| sw1 | FastEthernet0/1 | - | - | - | up |
+| sw1 | FastEthernet0/2 | - | - | - | up |
+| sw1 | GigabitEthernet0/1 | - | - | - | up |
+| sw1 | Vlan10 | 192.168.10.2/24 | 192.168.10.0/24 | - | up |
 
 ## Links
 
@@ -53,6 +58,21 @@
 | Device | Prefix | Via |
 |---|---|---|
 | r1 | 192.168.100.0/24 | 10.0.12.2 |
+
+## VLANs
+
+| Device | VLAN | Name |
+|---|---|---|
+| sw1 | 10 | SALES |
+| sw1 | 20 | HR |
+
+## Switchports
+
+| Device | Interface | Mode | Access VLAN | Trunk allowed | Native VLAN |
+|---|---|---|---|---|---|
+| sw1 | FastEthernet0/1 | access | 10 | - | - |
+| sw1 | FastEthernet0/2 | access | 20 | - | - |
+| sw1 | GigabitEthernet0/1 | trunk | - | 10,20 | 1 |
 
 ## Audit findings
 
