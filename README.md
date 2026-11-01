@@ -17,3 +17,7 @@ It reads device configs, reports what is wrong or missing, and generates documen
 ## Example output
 
 Documentation generated for the sample lab: [docs/example-report.md](docs/example-report.md)
+
+## Validation
+
+What is tested and what is not: [VALIDATION.md](VALIDATION.md)
