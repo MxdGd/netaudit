@@ -1,7 +1,7 @@
 """Audit checks: each one asks a question about a parsed device."""
 from dataclasses import dataclass
 
-from netaudit.parser import Device
+from netaudit.model import Device
 
 
 @dataclass

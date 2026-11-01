@@ -1,13 +1,13 @@
 from pathlib import Path
 
 from netaudit.audit import audit
-from netaudit.parser import parse_config
+from netaudit.parsers.frr import parse_frr
 
 SAMPLES = Path(__file__).parent.parent / "samples"
 
 
 def load(name):
-    return parse_config((SAMPLES / name).read_text())
+    return parse_frr((SAMPLES / name).read_text())
 
 
 def test_good_config_has_no_findings():

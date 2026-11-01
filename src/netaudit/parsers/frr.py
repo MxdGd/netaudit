@@ -1,30 +1,10 @@
-"""Read an FRR config file into simple Python data."""
-from dataclasses import dataclass, field
+"""Parser for FRRouting configs (IOS-like syntax) into the neutral model."""
 from ipaddress import IPv4Interface
 
-
-@dataclass
-class Interface:
-    name: str
-    ip: IPv4Interface | None = None
-    ospf_network: str | None = None
-    shutdown: bool = False
+from netaudit.model import Device, Interface, Ospf
 
 
-@dataclass
-class Ospf:
-    router_id: str | None = None
-    networks: list[tuple[str, str]] = field(default_factory=list)  # (prefix, area)
-
-
-@dataclass
-class Device:
-    hostname: str = ""
-    interfaces: dict[str, Interface] = field(default_factory=dict)
-    ospf: Ospf | None = None
-
-
-def parse_config(text: str) -> Device:
+def parse_frr(text: str) -> Device:
     device = Device()
     section = None  # the block we are currently inside
     for raw in text.splitlines():

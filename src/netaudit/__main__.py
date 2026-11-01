@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 
 from netaudit.audit import audit
-from netaudit.parser import parse_config
+from netaudit.parsers.frr import parse_frr
 
 
 def main() -> int:
@@ -11,7 +11,7 @@ def main() -> int:
         return 2
     problems = 0
     for path in sys.argv[1:]:
-        device = parse_config(Path(path).read_text())
+        device = parse_frr(Path(path).read_text())
         findings = audit(device)
         for f in findings:
             print(f"[{f.severity.upper()}] {f.device}: {f.message}")
