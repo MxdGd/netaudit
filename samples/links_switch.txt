@@ -1,0 +1,2 @@
+# switch-to-switch cables: device:interface device:interface
+sw1:GigabitEthernet0/1 sw2:GigabitEthernet0/1

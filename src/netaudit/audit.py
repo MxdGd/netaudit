@@ -78,6 +78,8 @@ def check_links(devices: dict[str, Device], links: list[Link]) -> list[Finding]:
                 missing = True
         if missing:
             continue
+        if a.switchport_mode or b.switchport_mode:
+            continue  # layer-2 links are checked by check_trunk_links
         if a.ip is None or b.ip is None:
             findings.append(Finding(name, "warning", "one end of the link has no IP address"))
         elif a.ip.network != b.ip.network:
@@ -127,6 +129,7 @@ def audit_network(devices: dict[str, Device], links: list[Link]) -> list[Finding
     findings.extend(check_links(devices, links))
     findings.extend(check_ospf_links(devices, links))
     findings.extend(check_static_routes(devices))
+    findings.extend(check_trunk_links(devices, links))
     return findings
 
 
@@ -188,3 +191,46 @@ def check_vlans_defined(device: Device) -> list[Finding]:
 
 
 CHECKS.append(check_vlans_defined)
+
+
+def _allowed_text(allowed: set[int] | None) -> str:
+    if allowed is None:
+        return "all"
+    return ",".join(str(v) for v in sorted(allowed)) or "none"
+
+
+def check_trunk_links(devices: dict[str, Device], links: list[Link]) -> list[Finding]:
+    """Both ends of a switch-to-switch link must agree on mode, native VLAN and allowed VLANs."""
+    findings = []
+    for link in links:
+        a = _find_interface(devices, link.a_device, link.a_iface)
+        b = _find_interface(devices, link.b_device, link.b_iface)
+        if a is None or b is None or not (a.switchport_mode or b.switchport_mode):
+            continue
+        name = f"{link.a_device}<->{link.b_device}"
+        end_a = f"{link.a_device} {link.a_iface}"
+        end_b = f"{link.b_device} {link.b_iface}"
+        if a.switchport_mode != b.switchport_mode:
+            findings.append(Finding(
+                name, "error",
+                f"switchport mode mismatch: {end_a} is {a.switchport_mode or 'not a switchport'}, "
+                f"{end_b} is {b.switchport_mode or 'not a switchport'}"))
+        elif a.switchport_mode == "access":
+            if (a.access_vlan or 1) != (b.access_vlan or 1):
+                findings.append(Finding(
+                    name, "error",
+                    f"access VLAN mismatch: {end_a} is in VLAN {a.access_vlan or 1}, "
+                    f"{end_b} is in VLAN {b.access_vlan or 1}"))
+        elif a.switchport_mode == "trunk":
+            native_a, native_b = a.native_vlan or 1, b.native_vlan or 1
+            if native_a != native_b:
+                findings.append(Finding(
+                    name, "error",
+                    f"native VLAN mismatch: {end_a} is {native_a}, {end_b} is {native_b}"))
+            if a.trunk_allowed != b.trunk_allowed:
+                findings.append(Finding(
+                    name, "warning",
+                    f"allowed-VLAN mismatch: {end_a} allows {_allowed_text(a.trunk_allowed)}, "
+                    f"{end_b} allows {_allowed_text(b.trunk_allowed)}; "
+                    f"a VLAN missing on either end does not cross the link"))
+    return findings
