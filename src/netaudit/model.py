@@ -25,3 +25,11 @@ class Device:
     hostname: str = ""
     interfaces: dict[str, Interface] = field(default_factory=dict)
     ospf: Ospf | None = None
+
+
+@dataclass
+class Link:
+    a_device: str
+    a_iface: str
+    b_device: str
+    b_iface: str

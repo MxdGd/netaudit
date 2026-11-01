@@ -1,23 +1,29 @@
+import argparse
 import sys
 from pathlib import Path
 
-from netaudit.audit import audit
+from netaudit.audit import audit_network
+from netaudit.links import parse_links
 from netaudit.parsers.frr import parse_frr
 
 
 def main() -> int:
-    if len(sys.argv) < 2:
-        print("usage: python -m netaudit CONFIG_FILE [CONFIG_FILE ...]")
-        return 2
-    problems = 0
-    for path in sys.argv[1:]:
+    ap = argparse.ArgumentParser(prog="netaudit", description="Audit network device configs.")
+    ap.add_argument("configs", nargs="+", help="device config files")
+    ap.add_argument("--links", help="file listing which interfaces are cabled together")
+    args = ap.parse_args()
+
+    devices = {}
+    for path in args.configs:
         device = parse_frr(Path(path).read_text())
-        findings = audit(device)
-        for f in findings:
-            print(f"[{f.severity.upper()}] {f.device}: {f.message}")
-        problems += len(findings)
-    print(f"\n{problems} problem(s) found.")
-    return 1 if problems else 0
+        devices[device.hostname] = device
+    links = parse_links(Path(args.links).read_text()) if args.links else []
+
+    findings = audit_network(devices, links)
+    for f in findings:
+        print(f"[{f.severity.upper()}] {f.device}: {f.message}")
+    print(f"\n{len(findings)} problem(s) found.")
+    return 1 if findings else 0
 
 
 if __name__ == "__main__":
