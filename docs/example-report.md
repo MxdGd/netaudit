@@ -74,6 +74,10 @@
 | sw1 | FastEthernet0/2 | access | 20 | - | - |
 | sw1 | GigabitEthernet0/1 | trunk | - | 10,20 | 1 |
 
+## Not checked
+
+_Every line was understood._
+
 ## Audit findings
 
 No problems found.

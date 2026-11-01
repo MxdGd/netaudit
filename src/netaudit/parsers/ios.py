@@ -4,7 +4,10 @@ Sub-commands must be indented by a space, as in 'show running-config'.
 """
 from ipaddress import IPv4Interface
 
-from netaudit.model import Device, Interface
+from netaudit.model import Device, Interface, Unparsed
+
+# Top-level lines that are harmless boilerplate, not network behavior.
+IGNORED_PREFIXES = ("version ", "service ", "no service ")
 
 
 def _parse_vlan_list(text: str) -> set[int]:
@@ -35,7 +38,7 @@ def _trunk_allowed(iface: Interface, words: list[str], line: str) -> None:
 
 def parse_ios(text: str) -> Device:
     device = Device()
-    section = None  # a VLAN id (int) or an Interface
+    section = None  # a VLAN id (int), an Interface, or the header (str) of an unsupported block
     for raw in text.splitlines():
         line = raw.strip()
         if not line or line.startswith("!"):
@@ -56,9 +59,16 @@ def parse_ios(text: str) -> Device:
                     )
                 section = Interface(name=words[1])
                 device.interfaces[section.name] = section
+            elif line == "end" or line.startswith(IGNORED_PREFIXES):
+                pass
+            else:
+                device.unparsed.append(Unparsed(line, ""))
+                section = line  # indented lines below are filed under this header
         elif isinstance(section, int):
             if words[0] == "name":
                 device.vlans[section] = words[1]
+            else:
+                device.unparsed.append(Unparsed(line, f"vlan {section}"))
         elif isinstance(section, Interface):
             if line.startswith("switchport mode "):
                 section.switchport_mode = words[2]
@@ -74,4 +84,12 @@ def parse_ios(text: str) -> Device:
                 section.shutdown = True
             elif line == "no shutdown":
                 section.shutdown = False
+            elif line.startswith("description "):
+                pass
+            else:
+                device.unparsed.append(Unparsed(line, f"interface {section.name}"))
+        elif isinstance(section, str):
+            device.unparsed.append(Unparsed(line, section))
+        else:
+            device.unparsed.append(Unparsed(line, ""))
     return device

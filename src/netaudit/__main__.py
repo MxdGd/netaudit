@@ -24,7 +24,21 @@ def main() -> int:
     findings = audit_network(devices, links)
     for f in findings:
         print(f"[{f.severity.upper()}] {f.device}: {f.message}")
+
+    unchecked = 0
+    for name in sorted(devices):
+        d = devices[name]
+        if not d.unparsed:
+            continue
+        unchecked += len(d.unparsed)
+        print(f"\n[NOT CHECKED] {name}: {len(d.unparsed)} line(s) the tool does not understand")
+        for u in d.unparsed:
+            where = f"{u.context}: " if u.context else ""
+            print(f"    {where}{u.line}")
+
     print(f"\n{len(findings)} problem(s) found.")
+    if unchecked:
+        print(f"{unchecked} line(s) not checked.")
 
     if args.doc:
         Path(args.doc).write_text(generate_doc(devices, links, findings))

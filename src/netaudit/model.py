@@ -32,12 +32,20 @@ class StaticRoute:
 
 
 @dataclass
+class Unparsed:
+    """A config line the parser did not understand, so nothing was checked about it."""
+    line: str
+    context: str = ""  # for example "interface eth1"; empty for a top-level line
+
+
+@dataclass
 class Device:
     hostname: str = ""
     interfaces: dict[str, Interface] = field(default_factory=dict)
     ospf: Ospf | None = None
     static_routes: list[StaticRoute] = field(default_factory=list)
     vlans: dict[int, str] = field(default_factory=dict)  # VLAN id -> name
+    unparsed: list[Unparsed] = field(default_factory=list)
 
 
 @dataclass

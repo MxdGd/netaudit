@@ -116,6 +116,16 @@ def generate_doc(
     else:
         out += ["_No switchports._", ""]
 
+    out += ["## Not checked", ""]
+    rows = []
+    for name in sorted(devices):
+        for u in devices[name].unparsed:
+            rows.append([name, u.context or "-", u.line])
+    if rows:
+        out += _table(["Device", "Where", "Line"], rows) + [""]
+    else:
+        out += ["_Every line was understood._", ""]
+
     out += ["## Audit findings", ""]
     if findings:
         out += [f"- **{f.severity.upper()}** {f.device}: {f.message}" for f in findings]
