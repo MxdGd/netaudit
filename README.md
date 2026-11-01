@@ -1,5 +1,7 @@
 # netaudit
 
+![tests](https://github.com/MxdGd/netaudit/actions/workflows/ci.yml/badge.svg)
+
 A config auditor and auto-documenter for small networks. It reads device
 configs, reports what is wrong or missing, and writes a Markdown document
 describing the lab.
