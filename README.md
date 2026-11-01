@@ -105,3 +105,7 @@ configs (`vlan 10`, `switchport mode access`, `switchport trunk allowed vlan`).
 Work in progress and a personal study tool. It has only been tested against
 small hand-written samples. See [VALIDATION.md](VALIDATION.md) before relying
 on it.
+
+## Coverage
+
+What is covered, what is planned and how it grows: [COVERAGE.md](COVERAGE.md)
