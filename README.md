@@ -13,3 +13,7 @@ It reads device configs, reports what is wrong or missing, and generates documen
     pip install pytest
     pytest
     PYTHONPATH=src python -m netaudit samples/broken/r2_shutdown.conf
+
+## Example output
+
+Documentation generated for the sample lab: [docs/example-report.md](docs/example-report.md)
