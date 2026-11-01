@@ -126,4 +126,40 @@ def audit_network(devices: dict[str, Device], links: list[Link]) -> list[Finding
         findings.extend(audit(device))
     findings.extend(check_links(devices, links))
     findings.extend(check_ospf_links(devices, links))
+    findings.extend(check_static_routes(devices))
+    return findings
+
+
+def check_static_routes(devices: dict[str, Device]) -> list[Finding]:
+    """Each static route's next hop must be reachable through a connected, active interface."""
+    owned = {i.ip.ip for d in devices.values() for i in d.interfaces.values() if i.ip}
+    findings = []
+    for device in devices.values():
+        mine = {i.ip.ip for i in device.interfaces.values() if i.ip}
+        for route in device.static_routes:
+            if route.next_hop is None:
+                continue  # routes that name an exit interface are not checked yet
+            label = f"static route {route.prefix} via {route.next_hop}"
+            if route.next_hop in mine:
+                findings.append(Finding(
+                    device.hostname, "error",
+                    f"{label}: the next hop is this device's own address"))
+                continue
+            egress = [
+                (name, iface) for name, iface in device.interfaces.items()
+                if iface.ip and route.next_hop in iface.ip.network
+            ]
+            if not egress:
+                findings.append(Finding(
+                    device.hostname, "error",
+                    f"{label}: the next hop is not in any connected subnet, "
+                    f"so the route cannot be used"))
+            elif all(iface.shutdown for _, iface in egress):
+                findings.append(Finding(
+                    device.hostname, "error",
+                    f"{label}: the interface toward it ({egress[0][0]}) is shut down"))
+            elif route.next_hop not in owned:
+                findings.append(Finding(
+                    device.hostname, "warning",
+                    f"{label}: no device in the lab owns the next hop (external device?)"))
     return findings

@@ -1,7 +1,16 @@
 """Parser for FRRouting configs (IOS-like syntax) into the neutral model."""
-from ipaddress import IPv4Interface
+from ipaddress import IPv4Address, IPv4Interface, IPv4Network
 
-from netaudit.model import Device, Interface, Ospf
+from netaudit.model import Device, Interface, Ospf, StaticRoute
+
+
+def _parse_static_route(words: list[str]) -> StaticRoute:
+    prefix = IPv4Network(words[2], strict=False)
+    target = words[3]
+    try:
+        return StaticRoute(prefix, next_hop=IPv4Address(target))
+    except ValueError:
+        return StaticRoute(prefix, interface=target)
 
 
 def parse_frr(text: str) -> Device:
@@ -23,6 +32,9 @@ def parse_frr(text: str) -> Device:
         elif line == "router ospf":
             device.ospf = Ospf()
             section = device.ospf
+        elif line.startswith("ip route "):
+            section = None
+            device.static_routes.append(_parse_static_route(words))
         elif isinstance(section, Interface):
             if line.startswith("ip address "):
                 section.ip = IPv4Interface(words[2])

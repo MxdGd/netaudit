@@ -3,7 +3,7 @@
 Parsers fill these in; checks read them. Checks never see config syntax.
 """
 from dataclasses import dataclass, field
-from ipaddress import IPv4Interface
+from ipaddress import IPv4Address, IPv4Interface, IPv4Network
 
 
 @dataclass
@@ -21,10 +21,18 @@ class Ospf:
 
 
 @dataclass
+class StaticRoute:
+    prefix: IPv4Network
+    next_hop: IPv4Address | None = None
+    interface: str | None = None  # set when the route names an exit interface
+
+
+@dataclass
 class Device:
     hostname: str = ""
     interfaces: dict[str, Interface] = field(default_factory=dict)
     ospf: Ospf | None = None
+    static_routes: list[StaticRoute] = field(default_factory=list)
 
 
 @dataclass
