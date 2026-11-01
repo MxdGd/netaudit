@@ -5,19 +5,19 @@ from pathlib import Path
 from netaudit.audit import audit_network
 from netaudit.docgen import generate_doc
 from netaudit.links import parse_links
-from netaudit.parsers.frr import parse_frr
+from netaudit.parsers import parse_file
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(prog="netaudit", description="Audit network device configs.")
-    ap.add_argument("configs", nargs="+", help="device config files")
+    ap.add_argument("configs", nargs="+", help="device config files (.ios = IOS syntax, else FRR)")
     ap.add_argument("--links", help="file listing which interfaces are cabled together")
     ap.add_argument("--doc", help="also write a Markdown report to this file")
     args = ap.parse_args()
 
     devices = {}
     for path in args.configs:
-        device = parse_frr(Path(path).read_text())
+        device = parse_file(path)
         devices[device.hostname] = device
     links = parse_links(Path(args.links).read_text()) if args.links else []
 

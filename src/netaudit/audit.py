@@ -163,3 +163,28 @@ def check_static_routes(devices: dict[str, Device]) -> list[Finding]:
                     device.hostname, "warning",
                     f"{label}: no device in the lab owns the next hop (external device?)"))
     return findings
+
+
+DEFAULT_VLANS = {1, 1002, 1003, 1004, 1005}
+
+
+def check_vlans_defined(device: Device) -> list[Finding]:
+    """Every VLAN a port uses must be defined on the switch."""
+    defined = DEFAULT_VLANS | set(device.vlans)
+    findings = []
+    for name, iface in device.interfaces.items():
+        if iface.switchport_mode == "access":
+            vlan = iface.access_vlan if iface.access_vlan is not None else 1
+            if vlan not in defined:
+                findings.append(Finding(
+                    device.hostname, "error",
+                    f"{name} is in access VLAN {vlan}, which is not defined on this switch"))
+        elif iface.switchport_mode == "trunk" and iface.trunk_allowed is not None:
+            for vlan in sorted(iface.trunk_allowed - defined):
+                findings.append(Finding(
+                    device.hostname, "warning",
+                    f"trunk {name} allows VLAN {vlan}, which is not defined on this switch"))
+    return findings
+
+
+CHECKS.append(check_vlans_defined)

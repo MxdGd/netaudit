@@ -12,6 +12,10 @@ class Interface:
     ip: IPv4Interface | None = None
     ospf_network: str | None = None
     shutdown: bool = False
+    switchport_mode: str | None = None  # "access" or "trunk"
+    access_vlan: int | None = None  # None means the default, VLAN 1
+    trunk_allowed: set[int] | None = None  # None means all VLANs
+    native_vlan: int | None = None  # None means the default, VLAN 1
 
 
 @dataclass
@@ -33,6 +37,7 @@ class Device:
     interfaces: dict[str, Interface] = field(default_factory=dict)
     ospf: Ospf | None = None
     static_routes: list[StaticRoute] = field(default_factory=list)
+    vlans: dict[int, str] = field(default_factory=dict)  # VLAN id -> name
 
 
 @dataclass
