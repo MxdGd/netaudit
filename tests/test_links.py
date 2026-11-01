@@ -20,8 +20,7 @@ def test_good_lab_has_no_findings():
 
 def test_wrong_subnet_is_found():
     findings = audit_network(*lab("broken/r3_wrong_subnet.conf"))
-    assert len(findings) == 1
-    assert "subnet mismatch" in findings[0].message
+    assert any("subnet mismatch" in f.message for f in findings)
 
 
 def test_wrong_mask_is_found():

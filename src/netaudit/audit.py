@@ -1,5 +1,6 @@
 """Audit checks: each one asks a question about parsed devices."""
 from dataclasses import dataclass
+from ipaddress import ip_network
 
 from netaudit.model import Device, Interface, Link
 
@@ -11,6 +12,18 @@ class Finding:
     message: str
 
 
+def ospf_area_for(device: Device, iface: Interface) -> str | None:
+    """Area of the OSPF network statement covering this interface, or None."""
+    if device.ospf is None or iface.ip is None:
+        return None
+    best = None  # (prefix length, area): the most specific statement wins
+    for prefix, area in device.ospf.networks:
+        net = ip_network(prefix, strict=False)
+        if iface.ip.ip in net and (best is None or net.prefixlen > best[0]):
+            best = (net.prefixlen, area)
+    return best[1] if best else None
+
+
 def check_shutdown_interfaces(device: Device) -> list[Finding]:
     """Report interfaces that are administratively shut down."""
     return [
@@ -20,7 +33,23 @@ def check_shutdown_interfaces(device: Device) -> list[Finding]:
     ]
 
 
-CHECKS = [check_shutdown_interfaces]
+def check_ospf_coverage(device: Device) -> list[Finding]:
+    """With OSPF configured, every active interface with an IP needs a covering network statement."""
+    if device.ospf is None:
+        return []
+    return [
+        Finding(
+            device.hostname, "error",
+            f"{name} ({iface.ip}) is not covered by any OSPF network statement, "
+            f"so OSPF does not run on it",
+        )
+        for name, iface in device.interfaces.items()
+        if iface.ip is not None and not iface.shutdown
+        and ospf_area_for(device, iface) is None
+    ]
+
+
+CHECKS = [check_shutdown_interfaces, check_ospf_coverage]
 
 
 def audit(device: Device) -> list[Finding]:
@@ -62,9 +91,39 @@ def check_links(devices: dict[str, Device], links: list[Link]) -> list[Finding]:
     return findings
 
 
+def check_ospf_links(devices: dict[str, Device], links: list[Link]) -> list[Finding]:
+    """Both ends of a link must run OSPF in the same area with the same network type."""
+    findings = []
+    for link in links:
+        da, db = devices.get(link.a_device), devices.get(link.b_device)
+        a = _find_interface(devices, link.a_device, link.a_iface)
+        b = _find_interface(devices, link.b_device, link.b_iface)
+        if da is None or db is None or a is None or b is None:
+            continue
+        area_a, area_b = ospf_area_for(da, a), ospf_area_for(db, b)
+        if area_a is None or area_b is None:
+            continue  # an uncovered interface is reported by check_ospf_coverage
+        name = f"{link.a_device}<->{link.b_device}"
+        if area_a != area_b:
+            findings.append(Finding(
+                name, "error",
+                f"OSPF area mismatch: {link.a_device} {link.a_iface} is in area {area_a}, "
+                f"{link.b_device} {link.b_iface} is in area {area_b}",
+            ))
+        if a.ospf_network != b.ospf_network:
+            findings.append(Finding(
+                name, "error",
+                f"OSPF network type mismatch: {link.a_device} {link.a_iface} is "
+                f"{a.ospf_network or 'default'}, {link.b_device} {link.b_iface} is "
+                f"{b.ospf_network or 'default'}",
+            ))
+    return findings
+
+
 def audit_network(devices: dict[str, Device], links: list[Link]) -> list[Finding]:
     findings = []
     for device in devices.values():
         findings.extend(audit(device))
     findings.extend(check_links(devices, links))
+    findings.extend(check_ospf_links(devices, links))
     return findings
