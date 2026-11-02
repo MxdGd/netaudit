@@ -29,17 +29,17 @@ Needs Python 3.10 or newer.
     cd netaudit
     python3 -m venv .venv
     source .venv/bin/activate
-    pip install pytest
+    pip install . pytest
     pytest
 
 Audit the sample routers (FRR syntax) and write a report:
 
-    PYTHONPATH=src python -m netaudit --links samples/links.txt --doc report.md samples/r1.conf samples/r2.conf samples/r3.conf
+    netaudit --links samples/links.txt --doc report.md samples/r1.conf samples/r2.conf samples/r3.conf
 
 Audit a sample switch with a deliberate mistake (files ending in `.ios` use the
 IOS parser, everything else is read as FRR):
 
-    PYTHONPATH=src python -m netaudit samples/broken/sw1_missing_vlan.ios
+    netaudit samples/broken/sw1_missing_vlan.ios
 
 The links file lists one cable per line, like `r1:eth1 r2:eth1`. The tool exits
 with status 1 when it finds problems. `samples/broken/` holds one deliberate
