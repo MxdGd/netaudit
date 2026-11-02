@@ -49,14 +49,31 @@ config file).
    sample produces the expected finding, and the behavior matches the CCNA
    material. Nothing is added automatically.
 
-## Planned order
+## Plan
 
-1. A local browser window next to the lab tool: loaded configs, findings
-   labeled VERIFIED, NOT CHECKED lines, and later AI answers labeled
-   AI EXPLANATION.
-2. IOS router parser, so Packet Tracer labs work.
-3. Gap log.
-4. Chat with a free-tier model.
-5. Check proposals, drafted by AI and reviewed by a person.
-6. Live reading from GNS3.
-7. One topic group at a time from the table above.
+**Rule: anyone can run it.** The core needs only Python 3.10+ and config
+files. Reading a GNS3 lab live and the chat are optional extras, and the tool
+says clearly when they are not set up. Nothing is specific to one computer. A
+clean install is tested for every release, and CI will run the tests on Linux,
+macOS and Windows.
+
+**v1**
+
+1. Installable package with a `netaudit` command (done)
+2. Topology diagram in the generated report (done)
+3. IOS router parser, so Packet Tracer labs work
+4. Check groups in order of CCNA weight: routing, ACLs, NAT and DHCP, layer 2
+   extras, basics. Each check comes with a short lesson.
+5. Local read-only window (`netaudit serve`): reads a GNS3 lab directly, or
+   configs pasted from Packet Tracer. Shows the diagram, findings labeled
+   VERIFIED, NOT CHECKED lines, and a chat labeled AI EXPLANATION (optional
+   free-tier key).
+6. README that leads with the networking problems it catches, a `labs/` folder
+   of lab write-ups, demo GIF, tagged release
+
+**After v1**
+
+- AI-drafted check proposals, reviewed by a person
+- Intent file, then snapshots and config diff
+- Reachability trace
+- Live Packet Tracer connection (Packet Tracer has no simple outside interface)

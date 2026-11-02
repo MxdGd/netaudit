@@ -12,10 +12,53 @@ def _table(headers: list[str], rows: list[list[str]]) -> list[str]:
     return lines
 
 
+def _node_id(name: str) -> str:
+    return "n_" + "".join(c if c.isalnum() else "_" for c in name)
+
+
+def _is_switch(device: Device) -> bool:
+    return any(i.switchport_mode for i in device.interfaces.values())
+
+
+def _mermaid(
+    devices: dict[str, Device], links: list[Link], findings: list[Finding]
+) -> list[str]:
+    """A Mermaid diagram of the lab; links that have findings are drawn in red."""
+    broken = {f.device for f in findings}
+    names = set(devices)
+    for link in links:
+        names.update((link.a_device, link.b_device))
+    lines = ["```mermaid", "graph LR"]
+    for name in sorted(names):
+        device = devices.get(name)
+        shape = '{{"%s"}}' if device and _is_switch(device) else '["%s"]'
+        lines.append("    " + _node_id(name) + shape % name)
+    red = []
+    for index, link in enumerate(links):
+        a = devices.get(link.a_device)
+        b = devices.get(link.b_device)
+        ia = a.interfaces.get(link.a_iface) if a else None
+        ib = b.interfaces.get(link.b_iface) if b else None
+        text = f"{link.a_iface} - {link.b_iface}"
+        if ia and ib and ia.ip and ib.ip:
+            same = ia.ip.network == ib.ip.network
+            text += f" ({ia.ip.network if same else 'MISMATCH'})"
+        lines.append(
+            f'    {_node_id(link.a_device)} ---|"{text}"| {_node_id(link.b_device)}'
+        )
+        if f"{link.a_device}<->{link.b_device}" in broken:
+            red.append(index)
+    lines += [f"    linkStyle {i} stroke:#d00,stroke-width:3px" for i in red]
+    lines.append("```")
+    return lines
+
+
 def generate_doc(
     devices: dict[str, Device], links: list[Link], findings: list[Finding]
 ) -> str:
     out = ["# Network documentation", ""]
+
+    out += ["## Topology", ""] + _mermaid(devices, links, findings) + [""]
 
     out += ["## Devices", ""]
     rows = []

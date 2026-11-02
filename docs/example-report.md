@@ -1,5 +1,19 @@
 # Network documentation
 
+## Topology
+
+```mermaid
+graph LR
+    n_r1["r1"]
+    n_r2["r2"]
+    n_r3["r3"]
+    n_sw1{{"sw1"}}
+    n_sw2{{"sw2"}}
+    n_r1 ---|"eth1 - eth1 (10.0.12.0/30)"| n_r2
+    n_r2 ---|"eth2 - eth1 (10.0.23.0/30)"| n_r3
+    n_sw1 ---|"GigabitEthernet0/1 - GigabitEthernet0/1"| n_sw2
+```
+
 ## Devices
 
 | Device | OSPF router-id | Interfaces |
@@ -8,6 +22,7 @@
 | r2 | 2.2.2.2 | 3 |
 | r3 | 3.3.3.3 | 2 |
 | sw1 | - | 4 |
+| sw2 | - | 4 |
 
 ## IP addressing
 
@@ -24,6 +39,10 @@
 | sw1 | FastEthernet0/2 | - | - | - | up |
 | sw1 | GigabitEthernet0/1 | - | - | - | up |
 | sw1 | Vlan10 | 192.168.10.2/24 | 192.168.10.0/24 | - | up |
+| sw2 | FastEthernet0/1 | - | - | - | up |
+| sw2 | FastEthernet0/2 | - | - | - | up |
+| sw2 | GigabitEthernet0/1 | - | - | - | up |
+| sw2 | Vlan10 | 192.168.10.3/24 | 192.168.10.0/24 | - | up |
 
 ## Links
 
@@ -31,6 +50,7 @@
 |---|---|---|
 | r1:eth1 | r2:eth1 | 10.0.12.0/30 |
 | r2:eth2 | r3:eth1 | 10.0.23.0/30 |
+| sw1:GigabitEthernet0/1 | sw2:GigabitEthernet0/1 | - |
 
 ## OSPF
 
@@ -65,6 +85,8 @@
 |---|---|---|
 | sw1 | 10 | SALES |
 | sw1 | 20 | HR |
+| sw2 | 10 | SALES |
+| sw2 | 20 | HR |
 
 ## Switchports
 
@@ -73,6 +95,9 @@
 | sw1 | FastEthernet0/1 | access | 10 | - | - |
 | sw1 | FastEthernet0/2 | access | 20 | - | - |
 | sw1 | GigabitEthernet0/1 | trunk | - | 10,20 | 1 |
+| sw2 | FastEthernet0/1 | access | 10 | - | - |
+| sw2 | FastEthernet0/2 | access | 20 | - | - |
+| sw2 | GigabitEthernet0/1 | trunk | - | 10,20 | 1 |
 
 ## Not checked
 

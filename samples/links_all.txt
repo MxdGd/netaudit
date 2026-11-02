@@ -1,0 +1,5 @@
+# one cable per line: device:interface device:interface
+r1:eth1 r2:eth1
+r2:eth2 r3:eth1
+# switch-to-switch cables: device:interface device:interface
+sw1:GigabitEthernet0/1 sw2:GigabitEthernet0/1
