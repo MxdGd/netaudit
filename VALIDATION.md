@@ -19,7 +19,7 @@ What netaudit checks, how it is tested, and what it does NOT do.
 
 | Area | Check | Severity |
 |---|---|---|
-| Interfaces | Interface administratively shut down | error |
+| Interfaces | Interface with an IP address that is shut down | error |
 | Links (routed) | Two ends of a cable in different subnets | error |
 | Links (routed) | Same IP on both ends of a cable | error |
 | OSPF | Interface with an IP not covered by any `network` statement | error |
@@ -64,6 +64,16 @@ What netaudit checks, how it is tested, and what it does NOT do.
 - One mistake can produce several findings (for example, a wrong subnet also
   leaves the address outside its OSPF network statement).
 - Severity levels are a judgement call, not a standard.
+- Shut-down interfaces without an IP address are not reported, because unused
+  interfaces are shut down on purpose. A cabled interface without an IP that is
+  shut down is not caught yet.
+- An interface that no OSPF network statement covers is reported as an error
+  even when it was left out on purpose (for example a LAN reached by a static
+  route).
+- IOS routers: OSPF is read from `router ospf N` (router-id and network
+  statements). Passive interfaces, costs, timers and other options, and static
+  routes with an administrative distance or other extra options, are reported
+  as NOT CHECKED. Unused-port boilerplate such as `duplex auto` is ignored.
 
 ## Not implemented yet
 

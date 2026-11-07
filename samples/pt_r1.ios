@@ -1,0 +1,30 @@
+hostname R1
+!
+interface Loopback0
+ ip address 1.1.1.1 255.255.255.255
+!
+interface GigabitEthernet0/0
+ ip address 10.0.12.1 255.255.255.252
+ ip ospf network point-to-point
+ duplex auto
+ speed auto
+!
+interface GigabitEthernet0/1
+ no ip address
+ duplex auto
+ speed auto
+ shutdown
+!
+router ospf 1
+ router-id 1.1.1.1
+ log-adjacency-changes
+ network 1.1.1.1 0.0.0.0 area 0
+ network 10.0.12.0 0.0.0.3 area 0
+!
+ip route 192.168.100.0 255.255.255.0 10.0.12.2
+!
+line con 0
+!
+line vty 0 4
+!
+end

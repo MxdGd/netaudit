@@ -25,11 +25,18 @@ def ospf_area_for(device: Device, iface: Interface) -> str | None:
 
 
 def check_shutdown_interfaces(device: Device) -> list[Finding]:
-    """Report interfaces that are administratively shut down."""
+    """Report interfaces that have an IP address but are administratively shut down.
+
+    Unused interfaces are shut down on purpose, so an interface without an
+    address is not reported.
+    """
     return [
-        Finding(device.hostname, "error", f"{name} is shut down")
+        Finding(
+            device.hostname, "error",
+            f"{name} has the IP address {iface.ip} but is shut down",
+        )
         for name, iface in device.interfaces.items()
-        if iface.shutdown
+        if iface.shutdown and iface.ip is not None
     ]
 
 
