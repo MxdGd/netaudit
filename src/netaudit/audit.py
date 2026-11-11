@@ -179,6 +179,48 @@ def check_default_route_loops(devices: dict[str, Device]) -> list[Finding]:
     return findings
 
 
+def check_return_routes(devices: dict[str, Device]) -> list[Finding]:
+    """A static route toward router B only works if B can send the replies back."""
+    findings = []
+    seen = set()
+    for a in devices.values():
+        for route in a.static_routes:
+            hop = route.next_hop
+            if hop is None:
+                continue
+            for b in devices.values():
+                if b is a:
+                    continue
+                if hop not in {i.ip.ip for i in b.interfaces.values() if i.ip}:
+                    continue
+                toward = {
+                    i.ip.network for i in a.interfaces.values()
+                    if i.ip and hop in i.ip.network
+                }
+                for iface in a.interfaces.values():
+                    if iface.ip is None or iface.shutdown:
+                        continue
+                    net = iface.ip.network
+                    if net in toward:
+                        continue  # the cable between the two routers
+                    if b.ospf is not None and ospf_area_for(a, iface) is not None:
+                        continue  # b probably learns this network through OSPF
+                    connected = any(
+                        i.ip and i.ip.network.overlaps(net) for i in b.interfaces.values()
+                    )
+                    routed = any(net.subnet_of(r.prefix) for r in b.static_routes)
+                    key = (a.hostname, b.hostname, net)
+                    if connected or routed or key in seen:
+                        continue
+                    seen.add(key)
+                    findings.append(Finding(
+                        a.hostname, "warning",
+                        f"{a.hostname} has a static route via {b.hostname}, but "
+                        f"{b.hostname} has no route back to {net}, so replies "
+                        f"from {net} may be dropped"))
+    return findings
+
+
 def audit_network(devices: dict[str, Device], links: list[Link]) -> list[Finding]:
     findings = []
     for device in devices.values():
@@ -189,6 +231,7 @@ def audit_network(devices: dict[str, Device], links: list[Link]) -> list[Finding
     findings.extend(check_trunk_links(devices, links))
     findings.extend(check_duplicate_router_ids(devices))
     findings.extend(check_default_route_loops(devices))
+    findings.extend(check_return_routes(devices))
     return findings
 
 
