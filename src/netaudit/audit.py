@@ -145,6 +145,40 @@ def check_duplicate_router_ids(devices: dict[str, Device]) -> list[Finding]:
     ]
 
 
+def _default_next_hops(device: Device) -> list:
+    """Next-hop addresses of the device's default routes (0.0.0.0/0)."""
+    return [
+        r.next_hop for r in device.static_routes
+        if r.prefix == ip_network("0.0.0.0/0") and r.next_hop is not None
+    ]
+
+
+def check_default_route_loops(devices: dict[str, Device]) -> list[Finding]:
+    """Two routers whose default routes point at each other bounce packets until the TTL runs out."""
+    findings = []
+    seen = set()
+    for a in devices.values():
+        mine_a = {i.ip.ip for i in a.interfaces.values() if i.ip}
+        for hop in _default_next_hops(a):
+            for b in devices.values():
+                if b is a:
+                    continue
+                mine_b = {i.ip.ip for i in b.interfaces.values() if i.ip}
+                if hop not in mine_b:
+                    continue
+                if any(h in mine_a for h in _default_next_hops(b)):
+                    pair = frozenset((a.hostname, b.hostname))
+                    if pair in seen:
+                        continue
+                    seen.add(pair)
+                    names = sorted(pair)
+                    findings.append(Finding(
+                        f"{names[0]}<->{names[1]}", "error",
+                        f"default route loop: {names[0]} and {names[1]} each send "
+                        f"unknown traffic to the other, so packets bounce between them"))
+    return findings
+
+
 def audit_network(devices: dict[str, Device], links: list[Link]) -> list[Finding]:
     findings = []
     for device in devices.values():
@@ -154,6 +188,7 @@ def audit_network(devices: dict[str, Device], links: list[Link]) -> list[Finding
     findings.extend(check_static_routes(devices))
     findings.extend(check_trunk_links(devices, links))
     findings.extend(check_duplicate_router_ids(devices))
+    findings.extend(check_default_route_loops(devices))
     return findings
 
 
