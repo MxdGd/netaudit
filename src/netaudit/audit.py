@@ -129,6 +129,22 @@ def check_ospf_links(devices: dict[str, Device], links: list[Link]) -> list[Find
     return findings
 
 
+def check_duplicate_router_ids(devices: dict[str, Device]) -> list[Finding]:
+    """No two routers in the lab may use the same OSPF router ID."""
+    users: dict[str, list[str]] = {}
+    for device in devices.values():
+        if device.ospf and device.ospf.router_id:
+            users.setdefault(device.ospf.router_id, []).append(device.hostname)
+    return [
+        Finding(
+            ", ".join(names), "error",
+            f"duplicate OSPF router ID {rid} on {', '.join(names)}",
+        )
+        for rid, names in users.items()
+        if len(names) > 1
+    ]
+
+
 def audit_network(devices: dict[str, Device], links: list[Link]) -> list[Finding]:
     findings = []
     for device in devices.values():
@@ -137,6 +153,7 @@ def audit_network(devices: dict[str, Device], links: list[Link]) -> list[Finding
     findings.extend(check_ospf_links(devices, links))
     findings.extend(check_static_routes(devices))
     findings.extend(check_trunk_links(devices, links))
+    findings.extend(check_duplicate_router_ids(devices))
     return findings
 
 
