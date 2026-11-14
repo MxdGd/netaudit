@@ -29,6 +29,11 @@ Every finding ends with a check ID. `netaudit --explain ACL-MASK` prints a short
 lesson on that mistake: what it is, why it breaks, how to fix it. No internet
 and no AI needed.
 
+The same findings as a self-contained HTML report (`--html`), with the broken
+link drawn in red:
+
+![HTML report with a red link](docs/evidence/15-html-report.png)
+
 More examples from the routing and switching checks:
 
 A static route whose next hop is not reachable:

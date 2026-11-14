@@ -50,6 +50,13 @@ Wrote report.md
 `report.md` is the generated documentation. GitHub draws its topology diagram
 by itself, with the broken link in red: [report.md](report.md).
 
+## The HTML report
+
+`netaudit --links links.txt --html report.html r1.ios r2.ios` writes one file you can
+open in a browser. The broken link is red:
+
+![HTML report with a red link](../../docs/evidence/15-html-report.png)
+
 ## Why it breaks
 
 Run `netaudit --explain OSPF-LINK` for the short lesson. In short: two OSPF
