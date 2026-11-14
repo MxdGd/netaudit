@@ -10,6 +10,7 @@ class Finding:
     device: str
     severity: str  # "error" or "warning"
     message: str
+    check: str = ""  # ID of the check that produced it, see CHECK_IDS
 
 
 def ospf_area_for(device: Device, iface: Interface) -> str | None:
@@ -62,7 +63,7 @@ CHECKS = [check_shutdown_interfaces, check_ospf_coverage]
 def audit(device: Device) -> list[Finding]:
     findings = []
     for check in CHECKS:
-        findings.extend(check(device))
+        findings.extend(_tag(check, check(device)))
     return findings
 
 
@@ -225,13 +226,13 @@ def audit_network(devices: dict[str, Device], links: list[Link]) -> list[Finding
     findings = []
     for device in devices.values():
         findings.extend(audit(device))
-    findings.extend(check_links(devices, links))
-    findings.extend(check_ospf_links(devices, links))
-    findings.extend(check_static_routes(devices))
-    findings.extend(check_trunk_links(devices, links))
-    findings.extend(check_duplicate_router_ids(devices))
-    findings.extend(check_default_route_loops(devices))
-    findings.extend(check_return_routes(devices))
+    findings.extend(_tag(check_links, check_links(devices, links)))
+    findings.extend(_tag(check_ospf_links, check_ospf_links(devices, links)))
+    findings.extend(_tag(check_static_routes, check_static_routes(devices)))
+    findings.extend(_tag(check_trunk_links, check_trunk_links(devices, links)))
+    findings.extend(_tag(check_duplicate_router_ids, check_duplicate_router_ids(devices)))
+    findings.extend(_tag(check_default_route_loops, check_default_route_loops(devices)))
+    findings.extend(_tag(check_return_routes, check_return_routes(devices)))
     return findings
 
 
@@ -424,4 +425,29 @@ def check_trunk_links(devices: dict[str, Device], links: list[Link]) -> list[Fin
                     f"allowed-VLAN mismatch: {end_a} allows {_allowed_text(a.trunk_allowed)}, "
                     f"{end_b} allows {_allowed_text(b.trunk_allowed)}; "
                     f"a VLAN missing on either end does not cross the link"))
+    return findings
+
+
+CHECK_IDS = {
+    check_shutdown_interfaces: "SHUTDOWN-IP",
+    check_ospf_coverage: "OSPF-COVERAGE",
+    check_links: "LINK-SUBNET",
+    check_ospf_links: "OSPF-LINK",
+    check_duplicate_router_ids: "OSPF-DUP-RID",
+    check_static_routes: "STATIC-NEXTHOP",
+    check_return_routes: "STATIC-RETURN",
+    check_default_route_loops: "DEFAULT-LOOP",
+    check_vlans_defined: "VLAN-UNDEFINED",
+    check_trunk_links: "TRUNK-MISMATCH",
+    check_acl_applied_undefined: "ACL-UNDEFINED",
+    check_acl_never_applied: "ACL-UNUSED",
+    check_acl_shadowed_rules: "ACL-SHADOWED",
+    check_acl_subnet_mask: "ACL-MASK",
+}
+
+
+def _tag(check, findings: list[Finding]) -> list[Finding]:
+    """Stamp each finding with the ID of the check that produced it."""
+    for finding in findings:
+        finding.check = CHECK_IDS[check]
     return findings
