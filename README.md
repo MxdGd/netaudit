@@ -126,6 +126,12 @@ Version 0.1, a study tool that is growing into something others can use. It has
 only been tested against small labs. Read [VALIDATION.md](VALIDATION.md) before
 relying on it.
 
+## Labs
+
+Write-ups with the configs, the planted mistake and what the tool found:
+
+- [Lab 01: OSPF area mismatch](labs/01-ospf-area-mismatch/README.md)
+
 ## Roadmap
 
 Planned, roughly in this order. Several are good first contributions.
