@@ -127,9 +127,9 @@ configs (`vlan 10`, `switchport mode access`, `switchport trunk allowed vlan`).
 
 ## Status
 
-Version 0.1, a study tool that is growing into something others can use. It has
-only been tested against small labs. Read [VALIDATION.md](VALIDATION.md) before
-relying on it.
+Version 1.0: a read-only study and sanity-check tool for small labs. It has only
+been tested against small hand-written labs, not production networks. Read
+[VALIDATION.md](VALIDATION.md) before relying on it.
 
 ## Labs
 

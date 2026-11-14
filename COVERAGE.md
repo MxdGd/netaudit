@@ -64,9 +64,9 @@ macOS and Windows.
 3. IOS router parser, so Packet Tracer labs work (done)
 4. Routing and ACL checks, each with an ID and a short lesson (`--explain`) (done)
 5. Self-contained HTML report (`--html`) (done)
-6. README that leads with what the tool catches, `CONTRIBUTING.md` (done); one
-   lab write-up in `labs/`, CI on Linux, macOS and Windows, tagged release
-   (in progress)
+6. README that leads with what the tool catches, `CONTRIBUTING.md`, a lab
+   write-up in `labs/`, CI on Linux, macOS and Windows, tagged release v1.0.0
+   (done)
 
 **After v1**
 
