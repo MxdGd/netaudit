@@ -2,79 +2,99 @@
 
 ![tests](https://github.com/MxdGd/netaudit/actions/workflows/ci.yml/badge.svg)
 
-A config auditor and auto-documenter for small networks. It reads device
-configs, reports what is wrong or missing, and writes a Markdown document
-describing the lab.
+A read-only config auditor for small network labs (Packet Tracer, GNS3 or real
+gear). It reads device configs, catches classic CCNA-level mistakes, explains
+each one in plain words, and documents the lab as a Markdown or HTML report.
 
-I built it to study for the CCNA: each concept I learn becomes a check, so the
-tool tells me what I got wrong without re-reading every config by hand.
+It is for people studying for the CCNA, people building labs who want a second
+pair of eyes, and anyone who wants a quick sanity check before touching a device.
+It never connects to a device and never changes anything: it only reads files.
 
 The checks are plain deterministic Python. The same input always gives the same
 findings, and every check has tests. There is no AI in the checks.
 
-## What it does
+## What it catches
 
-- Parses FRRouting configs and IOS-style switch configs into one
-  vendor-neutral model. Checks only read the model, so a new parser makes
-  every existing check work on a new syntax.
-- Compares devices across the cables you list in a links file.
-- Generates documentation: IP table, links, OSPF, static routes, VLANs,
-  switchports and the audit findings.
+An IOS router config with four planted mistakes:
 
-## Quick start
+    $ netaudit samples/broken/acl_mistakes.ios
+    [ERROR] edge1: GigabitEthernet0/0 applies ACL GHOST (out), but no ACL with that name or number is defined; on Cisco IOS an undefined ACL lets all traffic through  (ACL-UNDEFINED)
+    [WARNING] edge1: ACL UNUSED is defined but not applied to any interface (it may be used by NAT, a VTY line or a route map, which are not checked yet)  (ACL-UNUSED)
+    [WARNING] edge1: ACL BLOCK_WEB: 'permit ip any any' matches all traffic, so the 1 rule(s) after it never run  (ACL-SHADOWED)
+    [ERROR] edge1: ACL BLOCK_WEB: 'deny tcp 192.168.1.0 255.255.255.0 any eq 80' uses 255.255.255.0 where a wildcard mask belongs; did you mean 0.0.0.255?  (ACL-MASK)
 
-Needs Python 3.10 or newer.
+    4 problem(s) found.
 
-    git clone https://github.com/MxdGd/netaudit.git
-    cd netaudit
-    python3 -m venv .venv
-    source .venv/bin/activate
-    pip install . pytest
-    pytest
+Every finding ends with a check ID. `netaudit --explain ACL-MASK` prints a short
+lesson on that mistake: what it is, why it breaks, how to fix it. No internet
+and no AI needed.
 
-Audit the sample routers (FRR syntax) and write a report:
-
-    netaudit --links samples/links.txt --doc report.md samples/r1.conf samples/r2.conf samples/r3.conf
-
-Audit a sample switch with a deliberate mistake (files ending in `.ios` use the
-IOS parser, everything else is read as FRR):
-
-    netaudit samples/broken/sw1_missing_vlan.ios
-
-The links file lists one cable per line, like `r1:eth1 r2:eth1`. The tool exits
-with status 1 when it finds problems. `samples/broken/` holds one deliberate
-mistake per file.
-
-## Example output
+More examples from the routing and switching checks:
 
 A static route whose next hop is not reachable:
 
 ![static route finding](docs/evidence/08-static-route.png)
 
-An access port in a VLAN that does not exist:
-
-![VLAN finding](docs/evidence/09-vlan-finding.png)
-
 Two switches that disagree about the native VLAN on their trunk:
 
 ![trunk finding](docs/evidence/10-trunk-mismatch.png)
 
-A full generated report for the sample lab:
-[docs/example-report.md](docs/example-report.md)
+## Quick start
+
+Needs Python 3.10 or newer and nothing else.
+
+    git clone https://github.com/MxdGd/netaudit.git
+    cd netaudit
+    python3 -m venv .venv
+    source .venv/bin/activate
+    pip install .
+
+Audit the sample routers (FRR syntax) and write a report:
+
+    netaudit --links samples/links.txt --doc report.md --html report.html samples/r1.conf samples/r2.conf samples/r3.conf
+
+Open `report.html` in a browser: it is one self-contained file with the topology
+diagram (broken links in red), the findings and the tables. It needs no internet.
+
+Files ending in `.ios` use the IOS parser (routers and switches); everything else
+is read as FRR. The links file lists one cable per line, like `r1:eth1 r2:eth1`.
+The tool exits with status 1 when it finds problems. `samples/broken/` holds
+deliberate mistakes you can run it against.
+
+To run the tests: `pip install pytest && pytest`.
 
 ## What it checks
 
-| Area | Examples |
-|---|---|
-| Interfaces | administratively shut down |
-| Routed links | different subnets on the two ends, duplicate IP |
-| OSPF | interface not covered by a `network` statement, area mismatch, network type mismatch |
-| Static routes | unreachable next hop, own address as next hop, egress interface shut down |
-| VLANs | access port or trunk using an undefined VLAN |
-| Trunks | mode, access VLAN, native VLAN and allowed-VLAN mismatch between the two ends |
+| ID | What it catches | Severity |
+|---|---|---|
+| `SHUTDOWN-IP` | interface with an IP address that is shut down | error |
+| `LINK-SUBNET` | two ends of a cable in different subnets, duplicate IP, link end missing | error (warning if an end has no IP) |
+| `OSPF-COVERAGE` | interface not covered by an OSPF `network` statement | error |
+| `OSPF-LINK` | OSPF area or network type differs across a link | error |
+| `OSPF-DUP-RID` | two routers with the same OSPF router ID | error |
+| `STATIC-NEXTHOP` | next hop unreachable, own address, or behind a shut interface | error (warning if no device in the lab owns it) |
+| `STATIC-RETURN` | static route toward a router that has no route back | warning |
+| `DEFAULT-LOOP` | two routers whose default routes point at each other | error |
+| `VLAN-UNDEFINED` | access port or trunk using a VLAN that is not defined | error (warning for trunks) |
+| `TRUNK-MISMATCH` | mode, access VLAN, native VLAN or allowed VLANs differ across a switch link | error (warning for allowed VLANs) |
+| `ACL-UNDEFINED` | ACL applied to an interface but not defined | error |
+| `ACL-UNUSED` | ACL defined but never applied | warning |
+| `ACL-SHADOWED` | rules after a match-everything rule never run | warning |
+| `ACL-MASK` | subnet mask written where a wildcard mask belongs | error |
 
-The full list, how each check is tested, and everything the tool does not do:
+How each check is tested and everything the tool does not do:
 [VALIDATION.md](VALIDATION.md)
+
+## What it does not do
+
+- It reads configs; it does not simulate packets or OSPF. Where that matters, the
+  finding is a warning, not an error.
+- A config line the parser does not understand is never ignored silently: it is
+  listed as `[NOT CHECKED]`, so you know what was not looked at.
+- ACL checks work on IOS syntax only; the FRR parser does not read ACLs.
+- Not supported yet: `interface range`, `switchport trunk allowed vlan remove/except`,
+  ACL rules with extra options such as `dscp`, NAT and DHCP.
+- It has been tested against small hand-written labs, not large production networks.
 
 ## FRR to Cisco IOS commands
 
@@ -102,10 +122,28 @@ configs (`vlan 10`, `switchport mode access`, `switchport trunk allowed vlan`).
 
 ## Status
 
-Work in progress and a personal study tool. It has only been tested against
-small hand-written samples. See [VALIDATION.md](VALIDATION.md) before relying
-on it.
+Version 0.1, a study tool that is growing into something others can use. It has
+only been tested against small labs. Read [VALIDATION.md](VALIDATION.md) before
+relying on it.
 
-## Coverage
+## Roadmap
 
-What is covered, what is planned and how it grows: [COVERAGE.md](COVERAGE.md)
+Planned, roughly in this order. Several are good first contributions.
+
+- Basics: plain-text passwords, SSH prerequisites, speed/duplex mismatch
+- NAT and DHCP checks
+- Layer 2 extras: EtherChannel mode mismatch, portfast on a trunk, port security
+- A local read-only window (`netaudit serve`) with a paste box for Packet Tracer configs
+- Reading a GNS3 lab directly
+- An intent file: state what the lab should achieve and grade against it
+
+What is covered and how it grows: [COVERAGE.md](COVERAGE.md)
+
+## Contributing
+
+Adding a check is a small job: one function, one ID, one lesson, one test. See
+[CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License
+
+MIT, see [LICENSE](LICENSE).
