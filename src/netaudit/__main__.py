@@ -4,6 +4,7 @@ from pathlib import Path
 
 from netaudit.audit import audit_network
 from netaudit.docgen import generate_doc
+from netaudit.htmlgen import generate_html
 from netaudit.links import parse_links
 from netaudit.lessons import known_ids, lesson_text
 from netaudit.parsers import parse_file
@@ -14,6 +15,7 @@ def main() -> int:
     ap.add_argument("configs", nargs="*", help="device config files (.ios = IOS syntax, else FRR)")
     ap.add_argument("--links", help="file listing which interfaces are cabled together")
     ap.add_argument("--doc", help="also write a Markdown report to this file")
+    ap.add_argument("--html", help="also write a self-contained HTML report to this file")
     ap.add_argument("--explain", metavar="ID", help="print the lesson for a check ID and exit")
     args = ap.parse_args()
 
@@ -58,6 +60,9 @@ def main() -> int:
     if args.doc:
         Path(args.doc).write_text(generate_doc(devices, links, findings))
         print(f"Wrote {args.doc}")
+    if args.html:
+        Path(args.html).write_text(generate_html(devices, links, findings), encoding="utf-8")
+        print(f"Wrote {args.html}")
     return 1 if findings else 0
 
 
