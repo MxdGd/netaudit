@@ -10,10 +10,12 @@ permissions:
 
 jobs:
   pytest:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ["3.10", "3.12"]
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.10", "3.14"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -21,4 +23,6 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - run: pip install . pytest
       - run: pytest -q
-      - run: netaudit --links samples/links.txt samples/r1.conf samples/r2.conf samples/r3.conf
+      - run: netaudit --links samples/links.txt --html report.html samples/r1.conf samples/r2.conf samples/r3.conf
+      - run: netaudit --links samples/links_pt.txt samples/pt_r1.ios samples/pt_r2.ios
+      - run: netaudit --explain ACL-MASK

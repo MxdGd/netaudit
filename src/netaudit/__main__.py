@@ -34,7 +34,7 @@ def main() -> int:
     for path in args.configs:
         device = parse_file(path)
         devices[device.hostname] = device
-    links = parse_links(Path(args.links).read_text()) if args.links else []
+    links = parse_links(Path(args.links).read_text(encoding="utf-8")) if args.links else []
 
     findings = audit_network(devices, links)
     for f in findings:
@@ -58,7 +58,7 @@ def main() -> int:
         print(f"Run 'netaudit --explain {findings[0].check}' for a short lesson on a check.")
 
     if args.doc:
-        Path(args.doc).write_text(generate_doc(devices, links, findings))
+        Path(args.doc).write_text(generate_doc(devices, links, findings), encoding="utf-8")
         print(f"Wrote {args.doc}")
     if args.html:
         Path(args.html).write_text(generate_html(devices, links, findings), encoding="utf-8")

@@ -7,5 +7,5 @@ from netaudit.parsers.ios import parse_ios
 
 
 def parse_file(path: str) -> Device:
-    text = Path(path).read_text()
+    text = Path(path).read_text(encoding="utf-8")
     return parse_ios(text) if path.endswith(".ios") else parse_frr(text)
