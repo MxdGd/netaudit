@@ -20,16 +20,16 @@ config file).
 | Network access | EtherChannel | planned | |
 | Network access | CDP and LLDP | planned | |
 | Network access | Wireless architecture and controllers | chat only | |
-| IP connectivity | Static routes | partial | no return-route check; routes naming an exit interface are not checked |
-| IP connectivity | OSPF (single area) | partial | network statements, area, network type; no passive interfaces, timers or authentication |
-| IP connectivity | Default routes | planned | |
+| IP connectivity | Static routes | partial | next hop and return-route checks (return route is a warning); routes naming an exit interface are not checked |
+| IP connectivity | OSPF (single area) | partial | network statements, area, network type, duplicate router IDs; no passive interfaces, timers or authentication |
+| IP connectivity | Default routes | partial | loop between two routers only |
 | IP connectivity | First-hop redundancy (HSRP) | planned | |
 | IP connectivity | Routing table theory (metric, administrative distance) | chat only | |
 | IP services | NAT | planned | |
 | IP services | DHCP | planned | |
 | IP services | NTP, SNMP, syslog | planned | |
 | IP services | SSH, QoS | planned | |
-| Security | ACLs | planned | |
+| Security | ACLs | partial | IOS syntax only: undefined, unused, shadowed rules, subnet mask instead of wildcard |
 | Security | Port security | planned | |
 | Security | DHCP snooping, DAI | planned | |
 | Security | Passwords, AAA, VPN concepts | chat only | password checks may come later |
@@ -61,18 +61,20 @@ macOS and Windows.
 
 1. Installable package with a `netaudit` command (done)
 2. Topology diagram in the generated report (done)
-3. IOS router parser, so Packet Tracer labs work
-4. Check groups in order of CCNA weight: routing, ACLs, NAT and DHCP, layer 2
-   extras, basics. Each check comes with a short lesson.
-5. Local read-only window (`netaudit serve`): reads a GNS3 lab directly, or
-   configs pasted from Packet Tracer. Shows the diagram, findings labeled
-   VERIFIED, NOT CHECKED lines, and a chat labeled AI EXPLANATION (optional
-   free-tier key).
-6. README that leads with the networking problems it catches, a `labs/` folder
-   of lab write-ups, demo GIF, tagged release
+3. IOS router parser, so Packet Tracer labs work (done)
+4. Routing and ACL checks, each with an ID and a short lesson (`--explain`) (done)
+5. Self-contained HTML report (`--html`) (done)
+6. README that leads with what the tool catches, `CONTRIBUTING.md` (done); one
+   lab write-up in `labs/`, CI on Linux, macOS and Windows, tagged release
+   (in progress)
 
 **After v1**
 
+- Basics: plain-text passwords, SSH prerequisites, speed and duplex
+- NAT and DHCP checks
+- Layer 2 extras: EtherChannel, portfast on a trunk, port security
+- Local read-only window (`netaudit serve`) with a paste box for Packet Tracer
+  configs, and reading a GNS3 lab directly
 - AI-drafted check proposals, reviewed by a person
 - Intent file, then snapshots and config diff
 - Reachability trace

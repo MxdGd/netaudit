@@ -10,6 +10,12 @@ What netaudit checks, how it is tested, and what it does NOT do.
   and must produce the expected finding.
 - The sample configs are small and hand-written. The tool has not been run on
   large or real-world configs.
+- A test fails if any check ID has no lesson, or if a lesson still has a `TODO`.
+- The HTML report is tested for escaping (a hostile hostname cannot inject
+  markup), for containing no scripts and no external links, and for the
+  `--html` option writing a file. How it looks in a browser was checked by hand.
+- A clean install (`python3 -m venv /tmp/fresh && /tmp/fresh/bin/pip install .`)
+  was run to confirm the lesson files ship with the package.
 - The FRR sample lab (r1, r2, r3) was run once in a Containerlab lab early in
   the project: OSPF neighbors reached Full and r1 could ping r3. The static
   route on r1 and the IOS switch samples (sw1, sw2) were never run on real or
@@ -17,24 +23,35 @@ What netaudit checks, how it is tested, and what it does NOT do.
 
 ## Checks implemented
 
-| Area | Check | Severity |
+Every check has an ID. `netaudit --explain ID` prints a short lesson on it.
+
+| ID | Check | Severity |
 |---|---|---|
-| Interfaces | Interface with an IP address that is shut down | error |
-| Links (routed) | Two ends of a cable in different subnets | error |
-| Links (routed) | Same IP on both ends of a cable | error |
-| OSPF | Interface with an IP not covered by any `network` statement | error |
-| OSPF | Area mismatch between the two ends of a link | error |
-| OSPF | Network type mismatch between the two ends of a link | error |
-| Static routes | Next hop not in any connected subnet | error |
-| Static routes | Next hop is the device's own address | error |
-| Static routes | Interface toward the next hop is shut down | error |
-| Static routes | Next hop address not owned by any device in the lab | warning |
-| VLANs | Access port in a VLAN that is not defined on the switch | error |
-| VLANs | Trunk allows a VLAN that is not defined on the switch | warning |
-| Trunks | Switchport mode mismatch between the two ends of a link | error |
-| Trunks | Access VLAN mismatch between the two ends of a link | error |
-| Trunks | Native VLAN mismatch between the two ends of a link | error |
-| Trunks | Allowed-VLAN list mismatch between the two ends of a link | warning |
+| `SHUTDOWN-IP` | Interface with an IP address that is shut down | error |
+| `LINK-SUBNET` | Two ends of a cable in different subnets | error |
+| `LINK-SUBNET` | Same IP on both ends of a cable | error |
+| `LINK-SUBNET` | A cable end that is missing from the configs | error |
+| `LINK-SUBNET` | One end of a cable has no IP address | warning |
+| `OSPF-COVERAGE` | Interface with an IP not covered by any `network` statement | error |
+| `OSPF-LINK` | Area mismatch between the two ends of a link | error |
+| `OSPF-LINK` | Network type mismatch between the two ends of a link | error |
+| `OSPF-DUP-RID` | Two routers with the same OSPF router ID | error |
+| `STATIC-NEXTHOP` | Next hop not in any connected subnet | error |
+| `STATIC-NEXTHOP` | Next hop is the device's own address | error |
+| `STATIC-NEXTHOP` | Interface toward the next hop is shut down | error |
+| `STATIC-NEXTHOP` | Next hop address not owned by any device in the lab | warning |
+| `STATIC-RETURN` | Static route via a router that has no route back to the sender's networks | warning |
+| `DEFAULT-LOOP` | Two routers whose default routes point at each other | error |
+| `VLAN-UNDEFINED` | Access port in a VLAN that is not defined on the switch | error |
+| `VLAN-UNDEFINED` | Trunk allows a VLAN that is not defined on the switch | warning |
+| `TRUNK-MISMATCH` | Switchport mode mismatch between the two ends of a link | error |
+| `TRUNK-MISMATCH` | Access VLAN mismatch between the two ends of a link | error |
+| `TRUNK-MISMATCH` | Native VLAN mismatch between the two ends of a link | error |
+| `TRUNK-MISMATCH` | Allowed-VLAN list mismatch between the two ends of a link | warning |
+| `ACL-UNDEFINED` | Interface applies an ACL that is not defined | error |
+| `ACL-UNUSED` | ACL defined but not applied to any interface | warning |
+| `ACL-SHADOWED` | Rules after a rule that matches all traffic | warning |
+| `ACL-MASK` | Subnet mask written where a wildcard mask belongs | error |
 
 ## Known limits and blind spots
 
@@ -43,8 +60,9 @@ What netaudit checks, how it is tested, and what it does NOT do.
   neighbor that failed to form, or the real routing table. The "Config state"
   column in the generated document shows what the config says, not what the
   device is doing.
-- Unknown lines are ignored silently. A misspelled or unsupported command is
-  not reported, and the tool will behave as if it were absent.
+- Lines the parser does not understand are reported as `[NOT CHECKED]` and
+  appear in the generated reports, so nothing is ignored silently. But a line
+  that is understood and then misjudged can still give a wrong finding.
 - Cabling comes from a hand-written links file. The tool does not verify that
   the file matches reality.
 - IPv4 only. IPv6 is not parsed or checked.
@@ -75,8 +93,31 @@ What netaudit checks, how it is tested, and what it does NOT do.
   routes with an administrative distance or other extra options, are reported
   as NOT CHECKED. Unused-port boilerplate such as `duplex auto` is ignored.
 
+- `STATIC-RETURN` is a warning, not an error, and only looks one hop away: at
+  the router that owns the next hop. It skips networks that the sender
+  advertises in OSPF when the far router also runs OSPF, because OSPF may teach
+  the route and the tool does not simulate OSPF. A default route on the far
+  router counts as a way back.
+- `DEFAULT-LOOP` only finds two routers pointing at each other. A loop through
+  three or more routers is not found. Only static default routes are read.
+- `OSPF-DUP-RID` only compares router IDs written in the config. A router that
+  picks its ID automatically is not compared, because that needs OSPF
+  simulation.
+- ACL checks work on IOS syntax only; the FRR parser does not read ACLs. Named
+  and numbered ACLs are read. A rule with options the parser does not know
+  (for example `dscp`) is reported as NOT CHECKED, and the rest of the ACL is
+  still read. Port tests such as `eq 80` are skipped, not evaluated.
+- `ACL-UNUSED` is a warning because NAT, VTY lines and route maps can also use
+  an ACL, and the tool does not read those yet.
+- `ACL-SHADOWED` only looks for rules that match all traffic. It does not find
+  a narrower rule hiding an even narrower one.
+- `ACL-MASK` flags any ACL address whose second part looks like a subnet mask
+  (ones then zeros, for example 255.255.255.0). A real wildcard of that shape,
+  such as 255.0.0.0, is legal and would be flagged by mistake, but it is rare.
+
 ## Not implemented yet
 
-Return routes for static routes, a VLAN defined on one switch but missing on
-the other, DTP negotiation, VLAN pruning, ACLs, NAT, DHCP, STP, EtherChannel,
-port security, and reading configs live from devices.
+A VLAN defined on one switch but missing on the other, DTP negotiation, VLAN
+pruning, NAT, DHCP, STP, EtherChannel, port security, plain-text password and
+SSH checks, ACLs on FRR, ACLs used by NAT, route maps or VTY lines, and reading
+configs live from devices.
