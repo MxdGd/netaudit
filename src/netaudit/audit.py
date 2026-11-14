@@ -1,6 +1,6 @@
 """Audit checks: each one asks a question about parsed devices."""
 from dataclasses import dataclass
-from ipaddress import ip_network
+from ipaddress import IPv4Address, ip_network
 
 from netaudit.model import Device, Interface, Link
 
@@ -293,6 +293,95 @@ def check_vlans_defined(device: Device) -> list[Finding]:
 
 
 CHECKS.append(check_vlans_defined)
+
+
+def check_acl_applied_undefined(device: Device) -> list[Finding]:
+    """An interface must not use an ACL that is not defined on the device."""
+    findings = []
+    for name, iface in device.interfaces.items():
+        for acl, direction in ((iface.acl_in, "in"), (iface.acl_out, "out")):
+            if acl is not None and acl not in device.acls:
+                findings.append(Finding(
+                    device.hostname, "error",
+                    f"{name} applies ACL {acl} ({direction}), but no ACL with that "
+                    f"name or number is defined; on Cisco IOS an undefined ACL "
+                    f"lets all traffic through"))
+    return findings
+
+
+def check_acl_never_applied(device: Device) -> list[Finding]:
+    """An ACL that no interface uses filters nothing."""
+    used = {a for i in device.interfaces.values() for a in (i.acl_in, i.acl_out) if a}
+    return [
+        Finding(
+            device.hostname, "warning",
+            f"ACL {name} is defined but not applied to any interface (it may be "
+            f"used by NAT, a VTY line or a route map, which are not checked yet)")
+        for name in device.acls if name not in used
+    ]
+
+
+def _matches_everything(rule) -> bool:
+    return (rule.source == "any" and rule.destination in ("", "any")
+            and rule.protocol in ("", "ip"))
+
+
+def check_acl_shadowed_rules(device: Device) -> list[Finding]:
+    """The first matching rule wins, so rules after an any-to-any rule never run."""
+    findings = []
+    for name, rules in device.acls.items():
+        for i, rule in enumerate(rules):
+            if _matches_everything(rule):
+                after = len(rules) - i - 1
+                if after:
+                    findings.append(Finding(
+                        device.hostname, "warning",
+                        f"ACL {name}: '{rule.line}' matches all traffic, so the "
+                        f"{after} rule(s) after it never run"))
+                break
+    return findings
+
+
+def _subnet_mask_as_wildcard(operand: str) -> str | None:
+    """For 'ADDRESS MASK' where MASK is ones-then-zeros, return the wildcard it should be."""
+    parts = operand.split()
+    if len(parts) != 2:
+        return None
+    try:
+        IPv4Address(parts[0])
+        bits = int(IPv4Address(parts[1]))
+    except ValueError:
+        return None
+    if bits in (0, 0xFFFFFFFF):
+        return None  # 0.0.0.0 and 255.255.255.255 are valid wildcards
+    inverted = bits ^ 0xFFFFFFFF
+    if inverted & (inverted + 1):
+        return None  # not ones-then-zeros, so it is a real wildcard
+    return str(IPv4Address(inverted))
+
+
+def check_acl_subnet_mask(device: Device) -> list[Finding]:
+    """ACLs use wildcard masks; a subnet mask there matches the wrong addresses."""
+    findings = []
+    for name, rules in device.acls.items():
+        for rule in rules:
+            for operand in (rule.source, rule.destination):
+                wildcard = _subnet_mask_as_wildcard(operand)
+                if wildcard is not None:
+                    mask = operand.split()[1]
+                    findings.append(Finding(
+                        device.hostname, "error",
+                        f"ACL {name}: '{rule.line}' uses {mask} where a wildcard "
+                        f"mask belongs; did you mean {wildcard}?"))
+    return findings
+
+
+CHECKS.extend([
+    check_acl_applied_undefined,
+    check_acl_never_applied,
+    check_acl_shadowed_rules,
+    check_acl_subnet_mask,
+])
 
 
 def _allowed_text(allowed: set[int] | None) -> str:
