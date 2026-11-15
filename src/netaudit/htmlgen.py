@@ -19,7 +19,7 @@ ul.findings{list-style:none;padding:0}ul.findings li{padding:.4rem 0;border-bott
 code{background:var(--line);padding:0 .3rem;border-radius:3px}
 .scroll{overflow-x:auto}table{border-collapse:collapse;width:100%}
 th,td{text-align:left;padding:.3rem .6rem;border-bottom:1px solid var(--line)}
-svg{width:100%;height:auto}svg text{fill:var(--fg);font-size:13px}
+svg{display:block;width:100%;max-width:640px;height:auto;margin:0 auto}svg text{fill:var(--fg);font-size:13px}
 svg .small{font-size:11px;fill:var(--muted)}
 .node{stroke:var(--fg);stroke-width:1.5}.router{fill:var(--node)}.switch{fill:var(--sw)}
 .link{stroke:var(--muted);stroke-width:2}.link.bad{stroke:var(--err);stroke-width:4}
@@ -48,9 +48,18 @@ def _svg(devices: dict[str, Device], links: list[Link], findings: list[Finding])
     names = sorted(set(devices) | {n for l in links for n in (l.a_device, l.b_device)})
     pos = {}
     for i, name in enumerate(names):
-        angle = 2 * math.pi * i / len(names) - math.pi / 2
-        pos[name] = (300 + 150 * math.cos(angle), 220 + 150 * math.sin(angle))
-    parts = ['<svg viewBox="0 0 600 440" role="img" aria-label="Network topology">']
+        start = 0 if len(names) == 2 else -math.pi / 2
+        angle = 2 * math.pi * i / len(names) + start
+        radius = 200 if len(names) == 2 else 90 + 25 * len(names)
+        pos[name] = (radius * math.cos(angle), radius * math.sin(angle))
+    xs = [x for x, _ in pos.values()] or [0]
+    ys = [y for _, y in pos.values()] or [0]
+    left, right = min(xs) - 70, max(xs) + 70
+    top, bottom = min(ys) - 35, max(ys) + 35
+    parts = [
+        f'<svg viewBox="{left:.0f} {top:.0f} {right - left:.0f} {bottom - top:.0f}" '
+        f'role="img" aria-label="Network topology">'
+    ]
     for link in links:
         (x1, y1), (x2, y2) = pos[link.a_device], pos[link.b_device]
         bad = f"{link.a_device}<->{link.b_device}" in broken
